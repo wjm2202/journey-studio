@@ -1,0 +1,286 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journey Studio — folders</title>
+<style>
+  :root{color-scheme:dark}*{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#0b0b0f;color:#e7e7ea;display:flex;min-height:100vh}
+  #rail{width:260px;flex:0 0 260px;border-right:1px solid #1e1e26;background:#0d0d12;display:flex;flex-direction:column}
+  #rail header{padding:20px 18px;border-bottom:1px solid #1e1e26}
+  #rail h1{margin:0;font-size:15px}#rail p{margin:4px 0 0;color:#8a8a95;font-size:12px}
+  #folders{overflow:auto;padding:8px;flex:1}
+  .folder{padding:10px 12px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  .folder:hover{background:#14141b}
+  .folder.sel{background:#161b28;border-color:#26324a}
+  .folder .fn{font-size:13px;font-weight:600;word-break:break-word;display:flex;align-items:center;gap:8px}
+  .folder .fn span{flex:1;min-width:0}
+  .folder .fm{font-size:11px;color:#8a8a95;margin-top:2px}
+  .folder .bad{color:#ffb27f}
+  /* soft-remove — two-click arm, moves to _to_delete/ (nothing hard-deleted) */
+  .rm{font:inherit;font-size:11px;border:1px solid transparent;background:transparent;color:#5a5a64;border-radius:7px;padding:2px 7px;cursor:pointer;flex:0 0 auto}
+  .rm:hover{border-color:#5a2020;color:#ff9a9a}
+  .rm.armed{border-color:#5a2020;background:#2a1414;color:#ff6a6a}
+  .add{margin:10px 8px;padding:14px 12px;border:1.5px dashed #2b3550;border-radius:10px;text-align:center;color:#9fc6ff;cursor:pointer;font-size:12px;background:#0e131d}
+  .add:hover{border-color:#3d5488;background:#101827}
+  #wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+  #top{padding:18px 26px;border-bottom:1px solid #1e1e26;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  #top h2{margin:0;font-size:17px}#top .sub{color:#8a8a95;font-size:13px}
+  /* one-line run summary across ALL results in the report */
+  #bstats{font-size:13px;display:inline-flex;gap:10px;align-items:baseline}
+  #bstats .sp{color:#7fe0a4}#bstats .sf{color:#ff6a6a;font-weight:700}#bstats .sf0{color:#5a5a64}
+  #bstats .ss{color:#9a9aa4}#bstats .sfl{color:#ffd479}
+  .folder .fm .fmp{color:#7fe0a4}.folder .fm .fmf{color:#ff6a6a}
+  /* per-spec outcomes + filter */
+  .pill.passed{background:#10281a;color:#7fe0a4}
+  .pill.failed{background:#3a1414;color:#ff6a6a}
+  .pill.skipped{background:#1b1b22;color:#9a9aa4}
+  .pill.flaky{background:#2a2410;color:#ffd479}
+  /* the CARD wears its outcome — instant read, no squinting at pills */
+  .card.passed{border-left:4px solid #2f9e63}
+  .card.failed{border-left:4px solid #ff5a5a;border-color:#3a2026;background:#14100f}
+  .card.skipped{border-left:4px solid #3a3a48;border-style:dashed;opacity:.8}
+  .card.flaky{border-left:4px solid #ffb200}
+  #bfilter{display:inline-flex;gap:6px;margin-left:6px}
+  .fchip{font:inherit;font-size:12px;border:1px solid #2b2b36;background:#14141b;color:#9a9aa4;border-radius:999px;padding:3px 11px;cursor:pointer}
+  .fchip:hover{border-color:#3a3a48}
+  .fchip.on{border-color:#3d5488;color:#cfe0ff;background:#101827}
+  .fchip.f-failed.on{border-color:#5a2020;color:#ff9a9a;background:#2a1414}
+  .errmsg{font-size:12px;font-family:ui-monospace,monospace;color:#ffb0b0;background:#1a0f12;border:1px solid #3a1a20;border-radius:8px;padding:8px 10px;word-break:break-word;white-space:pre-wrap}
+  .card.mini{opacity:.95}
+  main{padding:22px 26px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));align-content:start}
+  .card{border:1px solid #23232d;border-radius:12px;padding:16px;background:#111117;display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .card h3{margin:0;font-size:15px}
+  .chip{font-size:11px;color:#a9a9b3;border:1px solid #2b2b36;border-radius:999px;padding:2px 9px;white-space:nowrap}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:#9a9aa4}
+  .pill{border-radius:999px;padding:2px 9px;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .pill.captured{background:#16263a;color:#7fc0ff}
+  .pill.narrated,.pill.spliced,.pill.ready{background:#2a2410;color:#ffd479}
+  .pill.uploaded,.pill.embedded,.pill.published{background:#10281a;color:#7fe0a4}
+  .ok{color:#7fe0a4}.warn{color:#ffb27f}.star{color:#ffd479}
+  video{width:100%;border-radius:8px;background:#000;max-height:200px}
+  .novideo{color:#6a6a74;font-size:12px;padding:24px;text-align:center;border:1px dashed #26262f;border-radius:8px}
+  a{color:#9fc6ff;text-decoration:none;font-size:13px}a:hover{text-decoration:underline}
+  .empty{padding:40px 26px;color:#8a8a95}
+  code{background:#17171f;border:1px solid #262630;border-radius:5px;padding:1px 5px;font-size:12px}
+  /* drop overlay */
+  #drop{position:fixed;inset:0;background:rgba(11,16,28,.92);border:3px dashed #3d5488;display:none;align-items:center;justify-content:center;z-index:50;flex-direction:column;gap:8px}
+  #drop.on{display:flex}
+  #drop b{font-size:22px;color:#cfe0ff}#drop span{color:#8a8a95}
+  #busy{position:fixed;left:0;right:0;bottom:0;background:#101827;border-top:1px solid #26324a;color:#cfe0ff;padding:10px 18px;font-size:13px;display:none}
+  #busy.on{display:block}
+</style></head><body>
+<aside id="rail">
+  <header><h1>Journey Studio</h1><p>Playwright report folders</p></header>
+  <div class="add" id="add">＋ drop a report folder here<br><span style="color:#6a7a95">or click to choose one</span></div>
+  <input id="picker" type="file" webkitdirectory directory multiple hidden>
+  <div id="folders"></div>
+</aside>
+<div id="wrap">
+  <div id="top"><h2 id="bname">…</h2><span id="bstats"></span><span id="bfilter"></span><span class="sub" id="bsub"></span></div>
+  <main id="grid"></main>
+  <div class="empty" id="empty" hidden></div>
+</div>
+<div id="drop"><b>Drop the Playwright report folder</b><span>results.json + its videos & traces</span></div>
+<div id="busy"></div>
+<script>
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const j=async u=>{const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw 0;return r.json()};
+const foldersEl=document.getElementById('folders'),grid=document.getElementById('grid'),empty=document.getElementById('empty');
+const bnameEl=document.getElementById('bname'),bsubEl=document.getElementById('bsub'),busyEl=document.getElementById('busy');
+const busy=m=>{busyEl.textContent=m||'';busyEl.classList.toggle('on',!!m);};
+
+// Card renders straight from the index.json summary — NO per-guide fetches up front.
+// state.json (narrated/spliced status) arrives async and flips the pill in place.
+// Video is preload="none": nothing is fetched until the user presses play.
+function card(base,sm,outcome){
+  const slug=sm.slug;
+  const status=sm.hasVideo===false?'missing':'captured';
+  const dur=sm.durationMs?(sm.durationMs/1000).toFixed(1)+'s':'—';
+  const aligned=(sm.aligned!==false);
+  const el=document.createElement('article');el.className='card'+(outcome?' '+outcome:'');
+  el.innerHTML=`<div class="row"><h3>${sm.annotated?'<span class=star>★ </span>':''}${esc(sm.title||slug)}</h3><span class="chip">${esc(sm.category||'—')}</span></div>
+  <div class="meta">${outcome?`<span class="pill ${esc(outcome)}">${esc(outcome)}</span>`:''}<span class="pill ${status}" data-pill="${esc(slug)}">${status}</span><span>${sm.steps||0} steps</span><span>${dur}</span>
+  <span class="${aligned?'ok':'warn'}">${aligned?'aligned':'aligned:false ⚠'}</span>${sm.downstream?`<span>${sm.downstream} calls</span>`:''}</div>
+  ${sm.hasVideo===false?'<div class="novideo">no video on this machine</div>':`<video src="${esc(base+'/'+slug+'/raw.webm')}" controls preload="none"></video>`}
+  <div class="row"><span><a href="${esc(base+'/'+slug)}/guide.json" target="_blank" rel="noopener">bundle ↗</a>
+  <button class="rm" title="move this guide to _to_delete/">remove</button></span>
+  <a class="work" href="studio.html?batch=${encodeURIComponent(base)}&slug=${encodeURIComponent(slug)}">work on this →</a></div>`;
+  const v=el.querySelector('video');
+  if(v)v.onerror=()=>{const d=document.createElement('div');d.className='novideo';d.textContent='no video on this machine';v.replaceWith(d);};
+  armRemove(el.querySelector('.rm'),async()=>{
+    const r=await fetch(`/api/remove?batch=${encodeURIComponent(base)}&slug=${encodeURIComponent(slug)}`,{method:'POST'});
+    if(r.ok){busy(`moved ${slug} → _to_delete/`);setTimeout(()=>busy(''),3000);await load(base);}
+    else busy(r.status===404?'✗ server too old for remove — restart:  node bin/journey-studio.mjs serve --dir guides':'✗ remove failed');
+  });
+  return el;
+}
+function statsHtml(r){
+  if(!r)return '';
+  return `<span class="sp">✓ ${r.passed} passed</span>`+
+    `<span class="${r.failed?'sf':'sf0'}">✗ ${r.failed} failed</span>`+
+    `<span class="ss">○ ${r.skipped} skipped</span>`+
+    (r.flaky?`<span class="sfl">⚡ ${r.flaky} flaky</span>`:'');
+}
+// view state: the selected batch, its guide summaries, per-spec outcomes, filter
+let view={b:null,sums:[],tests:null,by:new Map(),states:{},filter:'all'};
+function miniCard(t){
+  const el=document.createElement('article');el.className='card mini '+esc(t.outcome);
+  el.innerHTML=`<div class="row"><h3>${esc(t.title)}</h3><span class="pill ${esc(t.outcome)}">${esc(t.outcome)}</span></div>
+  <div class="meta">${t.file?`<span>${esc(t.file)}</span>`:''}${t.durationMs?`<span>${(t.durationMs/1000).toFixed(1)}s</span>`:''}</div>
+  ${t.error?`<div class="errmsg">${esc(t.error)}</div>`:`<div class="novideo">no guide bundle for this spec (${esc(t.outcome)})</div>`}`;
+  return el;
+}
+function matchesFilter(t){
+  if(view.filter==='all')return true;
+  if(view.filter==='passed')return t.outcome==='passed'||t.outcome==='flaky';
+  return t.outcome===view.filter;
+}
+// batch + filter live in the URL — a filtered view IS a shareable link
+// (dashboard.html?batch=X&filter=failed), and "AI review ↗" is the same slice as
+// one markdown fetch for an AI to consume.
+function syncUrl(){
+  if(!view.b)return;
+  const p=new URLSearchParams();p.set('batch',view.b.id);
+  if(view.filter!=='all')p.set('filter',view.filter);
+  history.replaceState(null,'','dashboard.html?'+p.toString());
+}
+function renderFilter(){
+  const el=document.getElementById('bfilter');
+  if(!view.tests){el.innerHTML='';return;}
+  const c={all:view.tests.length,passed:0,failed:0,skipped:0};
+  for(const t of view.tests){if(t.outcome==='failed')c.failed++;else if(t.outcome==='skipped')c.skipped++;else c.passed++;}
+  el.innerHTML=['all','passed','failed','skipped'].map(f=>`<button class="fchip f-${f} ${view.filter===f?'on':''}" data-f="${f}">${f} ${c[f]}</button>`).join('')
+    +`<a class="fchip" id="ailink" href="/api/review?batch=${encodeURIComponent(view.b.id)}&filter=${encodeURIComponent(view.filter)}" target="_blank" rel="noopener" title="this filtered slice as one markdown fetch — give the URL to an AI">AI review ↗</a>`;
+  el.querySelectorAll('button').forEach(bt=>bt.onclick=()=>{view.filter=bt.dataset.f;syncUrl();renderFilter();renderGrid();});
+}
+function renderGrid(){
+  grid.innerHTML='';empty.hidden=true;
+  let n=0;
+  if(view.tests){                                   // per-spec view: every outcome visible + filterable
+    for(const t of view.tests){
+      if(!matchesFilter(t))continue;n++;
+      const sm=t.slug&&view.by.get(t.slug);
+      grid.appendChild(sm?card(view.b.id,sm,t.outcome):miniCard(t));
+    }
+    if(!n){empty.hidden=false;empty.textContent='nothing matches this filter';}
+  }else{                                            // legacy entry: guides only
+    for(const sm of view.sums){grid.appendChild(card(view.b.id,sm,null));n++;}
+    if(!n){empty.hidden=false;empty.textContent='no guides in this folder';}
+  }
+  for(const [slug,st] of Object.entries(view.states)){
+    const p=grid.querySelector(`[data-pill="${CSS.escape(slug)}"]`);
+    if(p){p.className=`pill ${st}`;p.textContent=st;}
+  }
+}
+async function showBatch(b){
+  [...foldersEl.children].forEach(c=>c.classList.toggle('sel',c.dataset.id===b.id));
+  bnameEl.textContent=b.name||b.id;
+  document.getElementById('bstats').innerHTML=statsHtml(b.results);
+  bsubEl.textContent=`${b.guideCount} guide${b.guideCount===1?'':'s'}`+(b.ingestedAt?` · ingested ${new Date(b.ingestedAt).toLocaleString()}`:'')+(b.source?` · ${b.source}`:'');
+  let sums=b.guides;
+  if(!sums||!sums.length){ // legacy index entry without summaries — fall back to registry
+    let reg;try{reg=await j(`${encodeURIComponent(b.id)}/registry.json`)}catch{empty.hidden=false;empty.textContent='could not read this folder’s registry.json';grid.innerHTML='';return;}
+    sums=Object.entries(reg).map(([slug,m])=>({slug,...m}));
+  }
+  view={b,sums,tests:(b.tests&&b.tests.length)?b.tests:null,by:new Map(sums.map(s=>[s.slug,s])),states:{},filter:pendingFilter};
+  pendingFilter='all';
+  syncUrl();renderFilter();renderGrid();
+  // async status pass — narrated/spliced pills flip in as state.json responses land
+  sums.forEach(async sm=>{
+    try{const st=await j(`${encodeURIComponent(b.id)}/${sm.slug}/state.json`);
+      if(st&&st.state){view.states[sm.slug]=st.state;
+        const p=grid.querySelector(`[data-pill="${CSS.escape(sm.slug)}"]`);
+        if(p){p.className=`pill ${st.state}`;p.textContent=st.state;}}
+    }catch{}
+  });
+}
+// two-click arm: first click shows "sure?", second within 3s fires. No native dialogs.
+function armRemove(btn,fire){
+  if(!btn)return;
+  const label=btn.textContent;let timer=null;
+  btn.onclick=async e=>{e.stopPropagation();e.preventDefault();
+    if(!btn.classList.contains('armed')){btn.classList.add('armed');btn.textContent='sure?';
+      timer=setTimeout(()=>{btn.classList.remove('armed');btn.textContent=label;},3000);return;}
+    clearTimeout(timer);btn.classList.remove('armed');btn.textContent=label;await fire();};
+}
+function folderRow(b){
+  const el=document.createElement('div');el.className='folder';el.dataset.id=b.id;
+  el.innerHTML=`<div class="fn"><span>${esc(b.name||b.id)}</span><button class="rm" title="move this folder to _to_delete/">✕</button></div>
+    <div class="fm">${b.guideCount} guide${b.guideCount===1?'':'s'}${b.results?` · <span class="fmp">✓${b.results.passed}</span>${b.results.failed?` <span class="fmf">✗${b.results.failed}</span>`:''}`:''}${b.missingVideos?` · <span class="bad">${b.missingVideos} missing</span>`:''}</div>`;
+  el.onclick=()=>showBatch(b);
+  armRemove(el.querySelector('.rm'),async()=>{
+    const r=await fetch(`/api/remove?batch=${encodeURIComponent(b.id)}`,{method:'POST'});
+    if(r.ok){busy(`moved ${b.id} → _to_delete/`);setTimeout(()=>busy(''),3000);await load();}
+    else busy(r.status===404?'✗ server too old for remove — restart:  node bin/journey-studio.mjs serve --dir guides':'✗ remove failed');
+  });
+  return el;
+}
+// The HTML is served LIVE from web/, but the node process only updates on restart —
+// so the UI can be newer than the server. Detect that and say so loudly instead of
+// letting new endpoints 404 silently.
+let serverOK=false;
+async function checkServer(){
+  try{const h=await j('/api/health');serverOK=!!(h&&h.features&&h.features.includes('remove'));}
+  catch{serverOK=false;}
+  if(!serverOK)busy('⚠ the running server is OLDER than this page — restart it: Ctrl-C, then  node bin/journey-studio.mjs serve --dir guides');
+}
+let pendingFilter='all';   // filter requested via the URL, applied to the next showBatch
+async function load(selectId){
+  await checkServer();
+  const q=new URLSearchParams(location.search);
+  const qf=q.get('filter');
+  if(['passed','failed','skipped','all'].includes(qf))pendingFilter=qf;
+  if(!selectId&&q.get('batch'))selectId=q.get('batch');
+  foldersEl.innerHTML='';
+  let idx;try{idx=await j('index.json')}catch{
+    empty.hidden=false;empty.textContent='No folders yet — drop a Playwright report folder above to begin.';
+    bnameEl.textContent='no folders';bsubEl.textContent='';grid.innerHTML='';return;}
+  const batches=idx.batches||[];
+  if(!batches.length){empty.hidden=false;empty.textContent='No folders yet — drop a Playwright report folder above.';
+    bnameEl.textContent='no folders';bsubEl.textContent='';document.getElementById('bstats').innerHTML='';grid.innerHTML='';return;}   // clear the stale batch view too
+  for(const b of batches)foldersEl.appendChild(folderRow(b));
+  const pick=batches.find(b=>b.id===selectId)||batches[0];
+  showBatch(pick);
+}
+
+// ── drop zone → upload → ingest ──
+async function putFile(rel,blob){const r=await fetch('/api/upload?path='+encodeURIComponent(rel),{method:'PUT',body:blob});if(!r.ok)throw new Error('upload failed: '+rel);}
+async function ingestBatch(batch){const r=await fetch('/api/ingest?batch='+encodeURIComponent(batch),{method:'POST'});const t=await r.text();if(!r.ok){let m=t;try{m=JSON.parse(t).error}catch{}throw new Error(m||'ingest failed');}return JSON.parse(t);}
+async function uploadAll(batch,files){
+  if(!files.length){busy('nothing to upload');setTimeout(()=>busy(''),2000);return;}
+  let n=0;for(const f of files){busy(`uploading ${++n}/${files.length} — ${f.rel}`);await putFile(f.rel,f.blob);}
+  busy(`ingesting ${batch}…`);
+  try{const entry=await ingestBatch(batch);busy(`✓ ${entry.id}: ${entry.guideCount} guide(s)${entry.missingVideos?` · ${entry.missingVideos} video(s) not found`:''}`);await load(entry.id);setTimeout(()=>busy(''),3500);}
+  catch(e){busy('✗ '+e.message);}
+}
+function walkEntry(entry,prefix,out){
+  return new Promise(resolve=>{
+    if(entry.isFile){entry.file(f=>{out.push({blob:f,rel:prefix+entry.name});resolve();},()=>resolve());}
+    else if(entry.isDirectory){const rd=entry.createReader();const acc=[];
+      const more=()=>rd.readEntries(async es=>{if(!es.length){for(const c of acc)await walkEntry(c,prefix+entry.name+'/',out);resolve();}else{acc.push(...es);more();}},()=>resolve());
+      more();}
+    else resolve();
+  });
+}
+async function fromDataTransfer(dt){
+  const entries=[...dt.items].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+  const out=[];let batch=null;
+  for(const e of entries){if(e.isDirectory&&!batch)batch=e.name;await walkEntry(e,'',out);}
+  return {batch:batch||('dropped-'+new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14)),files:out};
+}
+
+const dropEl=document.getElementById('drop');let dragN=0;
+window.addEventListener('dragenter',e=>{e.preventDefault();dragN++;dropEl.classList.add('on');});
+window.addEventListener('dragover',e=>{e.preventDefault();});
+window.addEventListener('dragleave',e=>{e.preventDefault();if(--dragN<=0)dropEl.classList.remove('on');});
+window.addEventListener('drop',async e=>{e.preventDefault();dragN=0;dropEl.classList.remove('on');
+  if(!e.dataTransfer)return;const {batch,files}=await fromDataTransfer(e.dataTransfer);await uploadAll(batch,files);});
+// folder-picker fallback
+const picker=document.getElementById('picker');
+document.getElementById('add').onclick=()=>picker.click();
+picker.onchange=async()=>{const fs=[...picker.files].filter(f=>f.webkitRelativePath);
+  if(!fs.length)return;const batch=fs[0].webkitRelativePath.split('/')[0];
+  await uploadAll(batch,fs.map(f=>({blob:f,rel:f.webkitRelativePath})));picker.value='';};
+
+load();
+</script></body></html>

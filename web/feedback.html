@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journey Studio — feedback</title>
+<style>
+  :root{color-scheme:dark}*{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#0b0b0f;color:#e7e7ea}
+  header{padding:16px 26px;border-bottom:1px solid #1e1e26;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header a{color:#9fc6ff;text-decoration:none;font-size:13px}
+  header h1{margin:0;font-size:18px;flex:1}
+  .seg{display:flex;gap:2px;background:#14141b;border:1px solid #23232d;border-radius:999px;padding:2px}
+  .seg button{font:inherit;border:0;background:transparent;color:#9a9aa4;border-radius:999px;padding:5px 14px;cursor:pointer;font-size:13px}
+  .seg button.on{background:#1c2740;color:#cfe0ff}
+  main{padding:20px 26px;max-width:900px}
+  .jgroup{margin-bottom:22px}
+  .jhead{font-size:13px;color:#9a9aa4;margin:0 0 8px;display:flex;gap:8px;align-items:baseline}
+  .jhead a{color:#bfe0ff;text-decoration:none;font-weight:600}
+  .note{border:1px solid #23232d;border-radius:10px;background:#111117;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+  .note.done{opacity:.55}
+  .tag{font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-radius:5px;padding:3px 7px;flex:0 0 auto;margin-top:2px}
+  .tag.fix{background:#2a1414;color:#ff9a9a}.tag.rename{background:#12233a;color:#8fc4ff}
+  .tag\.re-record{background:#2a2410;color:#ffd479}.tag.question{background:#1a1030;color:#c9a9ff}
+  .tag.idea{background:#10281a;color:#7fe0a4}.tag.baseline{background:#1b1b22;color:#c9c9d2}
+  .body{flex:1;min-width:0}
+  .txt{font-size:14px;color:#e7e7ea;word-break:break-word}
+  .note.done .txt{text-decoration:line-through;color:#8a8a95}
+  .ref{font-size:12px;color:#7a7a86;margin-top:3px}
+  .ref a{color:#9fc6ff;text-decoration:none}
+  .acts{display:flex;gap:6px;flex:0 0 auto}
+  .acts button{font:inherit;font-size:12px;border:1px solid #2b2b36;background:#17171f;color:#c9c9d2;border-radius:8px;padding:5px 10px;cursor:pointer}
+  .acts button:hover{border-color:#3a3a48}
+  .empty{color:#8a8a95;padding:30px 0}
+  .count{font-size:12px;color:#8a8a95}
+</style></head><body>
+<header>
+  <a href="dashboard.html">← folders</a>
+  <h1>Feedback — work to do</h1>
+  <span class="count" id="count"></span>
+  <div class="seg"><button id="f-open" class="on">open</button><button id="f-all">all</button></div>
+</header>
+<main><div id="list"></div><div class="empty" id="empty" hidden></div></main>
+<script>
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let notes=[], filter='open';
+async function load(){ try{notes=await (await fetch('feedback.json',{cache:'no-store'})).json();}catch{notes=[];} render(); }
+async function post(url,body){ const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); if(!r.ok)throw new Error(await r.text()); return r.json(); }
+function studioLink(n){ const p=new URLSearchParams({batch:n.batch||'.',slug:n.slug||''}); return `studio.html?${p}`; }
+function render(){
+  const shown=notes.filter(n=>filter==='all'||n.status!=='done');
+  document.getElementById('count').textContent=`${notes.filter(n=>n.status!=='done').length} open · ${notes.length} total`;
+  const byJ={}; for(const n of shown){const k=(n.batch||'?')+'/'+(n.slug||'?'); (byJ[k]=byJ[k]||[]).push(n);}
+  const keys=Object.keys(byJ).sort();
+  const el=document.getElementById('list'); el.innerHTML='';
+  document.getElementById('empty').hidden=keys.length>0;
+  document.getElementById('empty').textContent = filter==='open'?'No open work — flag something from a journey in the Studio.':'No feedback yet.';
+  for(const k of keys){
+    const g=document.createElement('div');g.className='jgroup';
+    const first=byJ[k][0];
+    g.innerHTML=`<div class="jhead"><a href="${studioLink(first)}">${esc(first.slug||k)}</a><span>${esc(first.batch||'')}</span><span>· ${byJ[k].length}</span></div>`;
+    for(const n of byJ[k]){
+      const d=document.createElement('div');d.className='note'+(n.status==='done'?' done':'');
+      d.innerHTML=`<span class="tag ${esc(n.tag)}">${esc(n.tag)}</span>
+        <div class="body"><div class="txt">${esc(n.text)||'<i>(no text)</i>'}</div>
+          <div class="ref">${n.stepIndex!=null?`step ${n.stepIndex}${n.step?': '+esc(n.step):''} · `:''}<a href="${studioLink(n)}">open journey →</a></div></div>
+        <div class="acts"><button data-done="${n.id}">${n.status==='done'?'reopen':'✓ done'}</button><button data-del="${n.id}">✕</button></div>`;
+      g.appendChild(d);
+    }
+    el.appendChild(g);
+  }
+  el.querySelectorAll('[data-done]').forEach(b=>b.onclick=async()=>{const n=notes.find(x=>x.id===b.dataset.done);await post('/api/note/update',{id:n.id,patch:{status:n.status==='done'?'open':'done'}});load();});
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{await post('/api/note/delete',{id:b.dataset.del});load();});
+}
+document.getElementById('f-open').onclick=()=>{filter='open';document.getElementById('f-open').classList.add('on');document.getElementById('f-all').classList.remove('on');render();};
+document.getElementById('f-all').onclick=()=>{filter='all';document.getElementById('f-all').classList.add('on');document.getElementById('f-open').classList.remove('on');render();};
+load();
+</script></body></html>

@@ -1,0 +1,46 @@
+{
+  "name": "journey-studio",
+  "version": "0.1.0",
+  "description": "Turn Playwright test results into narrated, human-paced how-to guide videos. Point it at a results.json.",
+  "type": "module",
+  "bin": {
+    "journey-studio": "bin/journey-studio.mjs"
+  },
+  "scripts": {
+    "build": "node bin/journey-studio.mjs build",
+    "serve": "node bin/journey-studio.mjs serve",
+    "drop": "./drop",
+    "test": "node --test"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "web",
+    "playwright",
+    "assets",
+    "drop",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "playwright",
+    "testing",
+    "video",
+    "documentation",
+    "screencast",
+    "narration",
+    "tutorial",
+    "trace",
+    "e2e"
+  ],
+  "author": "Glen Osborne (Parametric Memory)",
+  "homepage": "https://parametric-memory.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/parametric-memory/journey-studio.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

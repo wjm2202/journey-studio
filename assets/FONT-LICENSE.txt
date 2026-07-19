@@ -1,0 +1,15 @@
+assets/font.ttf is a DejaVu font.
+
+DejaVu fonts are a derivative of the Bitstream Vera fonts. Bitstream Vera is
+Copyright (c) 2003 Bitstream, Inc. All Rights Reserved. "Bitstream Vera" is a
+trademark of Bitstream, Inc. Glyphs and modifications added by the DejaVu
+project are in the public domain.
+
+The fonts are licensed under the Bitstream Vera Fonts license, which permits
+free use, copying, merging, embedding and redistribution, provided that the
+copyright and trademark notices above are retained, that fonts derived from
+them are renamed, and that the fonts are not sold by themselves.
+
+Full license text: https://dejavu-fonts.github.io/License.html
+
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

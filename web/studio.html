@@ -1,0 +1,386 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journey Studio — narrate</title>
+<style>
+  :root{color-scheme:dark}*{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#0b0b0f;color:#e7e7ea}
+  header{padding:14px 24px;border-bottom:1px solid #1e1e26;display:flex;align-items:center;gap:16px}
+  header a{color:#9fc6ff;text-decoration:none;font-size:13px;white-space:nowrap}
+  header h1{margin:0;font-size:18px;font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  header .cat{font-size:11px;color:#a9a9b3;border:1px solid #2b2b36;border-radius:999px;padding:2px 10px}
+  header .pace{color:#6a6a74;font-size:12px}
+  .wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:0;height:calc(100vh - 53px)}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr;height:auto}}
+  .stage{padding:18px 20px;border-right:1px solid #1e1e26;display:flex;flex-direction:column;gap:14px;position:sticky;top:0;align-self:start}
+  video{width:100%;border-radius:10px;background:#000;max-height:56vh}
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  button{font:inherit;border:1px solid #2b2b36;background:#17171f;color:#e7e7ea;border-radius:999px;padding:11px 22px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  button:hover{border-color:#3a3a48}
+  button.play{background:#12233a;border-color:#244063;color:#bfe0ff}
+  button.rec{background:#2a1414;border-color:#5a2020;color:#ff9a9a}
+  button.rec.on{background:#3a1414;color:#ff6a6a}
+  button.flag{background:#1b1b22;border-color:#2b2b36;color:#ffd479}
+  .now{border:1px solid #23232d;border-radius:10px;background:#111117;padding:12px 14px;min-height:56px}
+  .now .lbl{font-size:11px;letter-spacing:.5px;color:#7fc0ff;text-transform:uppercase}
+  .now h3{margin:3px 0 0;font-size:18px}
+  .now .cap{color:#9a9aa4;font-size:12px;margin-top:4px}
+  #status{color:#9a9aa4;font-size:13px;min-height:18px}
+  .steps{display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:16px 18px}
+  .prog{position:sticky;top:0;background:#0b0b0f;padding:2px 0 12px;font-size:12px;color:#9a9aa4;display:flex;align-items:center;gap:10px;z-index:2}
+  .prog a{color:#ffd479;text-decoration:none;margin-left:auto}
+  .bar{flex:1;height:6px;background:#1b1b22;border-radius:999px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:#7fe0a4;transition:width .2s}
+  ol.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-height:0;overflow-y:auto}
+  li.step{border:1px solid #23232d;border-radius:10px;background:#0f0f14;padding:10px 12px;cursor:pointer;flex:0 0 auto}
+  /* an opened step takes the space it NEEDS — natural height, the list scrolls, no inner scrollbar */
+  li.step.cur,li.step.open{display:flex;flex-direction:column}
+  li.step.open{border-color:#2b3550}
+  li.step.cur{border-color:#3d5488;background:#111827;box-shadow:0 0 0 1px #26324a inset}
+  li.step.done .stitle{color:#c9c9d2}
+  .shead{display:flex;align-items:center;gap:10px}
+  .dot{width:18px;height:18px;border-radius:999px;border:2px solid #3a3a48;flex:0 0 18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#0b0b0f}
+  li.step.done .dot{background:#7fe0a4;border-color:#7fe0a4}
+  li.step .dot{transition:background .2s,border-color .2s}
+  li.step.done .dot::after{content:'✓';color:#0b0b0f;font-size:12px;font-weight:800}
+  @keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+  li.step.done .dot{animation:pop .28s ease-out}
+
+  li.step.cur .dot{border-color:#7fc0ff}
+  .sidx{font-size:11px;color:#7a7a86;width:20px}
+  .stitle{font-weight:600;font-size:14px;flex:1;min-width:0}
+  .stime{font-size:11px;color:#6a6a74}
+  .scount{font-size:11px;color:#7a7a86}
+  .sjump{padding:2px 8px;font-size:11px;border-radius:7px;background:transparent;border:1px solid transparent;color:#6a6a74;cursor:pointer}
+  .sjump:hover{border-color:#244063;color:#bfe0ff}
+  .sflag{padding:2px 7px;font-size:12px;border-radius:7px;background:transparent;border:1px solid transparent;color:#6a6a74}
+  .sflag:hover{border-color:#3a3a48;color:#ffd479}
+  .sflag .fc{color:#ffd479;font-size:11px;margin-left:3px}
+  .sbody{margin:9px 0 2px;padding-left:28px;display:none;flex-direction:column;gap:10px}
+  li.step.cur .sbody,li.step.open .sbody{display:flex}
+  /* manual collapse overrides the current step's auto-expand */
+  li.step.closed .sbody{display:none!important}
+  /* clear ✕ to close any expanded step (manually opened OR auto-expanded current) */
+  .sclose{display:none;padding:2px 9px;font-size:13px;border-radius:7px;background:transparent;border:1px solid #2b2b36;color:#9a9aa4;cursor:pointer;flex:0 0 auto}
+  .sclose:hover{border-color:#5a2020;color:#ff9a9a}
+  li.step.open>.shead .sclose,li.step.cur>.shead .sclose{display:inline-flex}
+  li.step.closed>.shead .sclose{display:none!important}
+  .grp2{border-left:2px solid #23232d;padding-left:10px}
+  .grp2.here{border-left-color:#7fc0ff}
+  .ghead{display:flex;gap:8px;align-items:baseline;font-size:12.5px;color:#d0d0d8;margin-bottom:4px}
+  .kind{font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-radius:4px;padding:1px 5px;flex:0 0 auto}
+  .kind.navigate{background:#12233a;color:#8fc4ff}.kind.interact{background:#2a2410;color:#ffd479}
+  .kind.api{background:#10281a;color:#7fe0a4}.kind.action,.kind.load{background:#1b1b22;color:#9a9aa4}
+  .call{font-size:12px;font-family:ui-monospace,monospace;display:flex;gap:8px;align-items:baseline;padding:1px 0;color:#b9b9c2}
+  .m{font-weight:700;font-size:10px;border-radius:4px;padding:1px 5px;flex:0 0 auto}
+  .m.GET{background:#12233a;color:#8fc4ff}.m.POST{background:#10281a;color:#7fe0a4}
+  .m.PUT,.m.PATCH{background:#2a2410;color:#ffd479}.m.DELETE{background:#2a1414;color:#ff9a9a}
+  .xN{color:#ffd479;font-size:11px}.st{font-size:11px;color:#7a7a86}.sum{color:#8a8a95;font-size:11px}
+  .none{color:#5a5a64;font-size:12px}
+  .kind.poll{background:#10281a;color:#7fe0a4}
+  .pollsum{font-size:12px;color:#b9b9c2}
+  .pollsum b{color:#7fe0a4}
+  /* step timeline — visual reference to the running step */
+  .timeline{position:relative;height:26px;background:#14141b;border:1px solid #23232d;border-radius:7px;overflow:hidden;cursor:pointer;user-select:none}
+  .timeline .seg{position:absolute;top:0;bottom:0;background:#1b1b22;border-right:1px solid #0b0b0f;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
+  .timeline .seg span{font-size:10px;color:#7a7a86}
+  .timeline .seg:hover{background:#242430}
+  .timeline .seg.done{background:#173a29}.timeline .seg.done span{color:#7fe0a4}
+  .timeline .seg.cur{background:#1c3a5c}.timeline .seg.cur span{color:#bfe0ff;font-weight:700}
+  .timeline .playhead{position:absolute;top:-1px;bottom:-1px;width:2px;background:#fff;box-shadow:0 0 7px #fff;left:0;pointer-events:none}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(127,192,255,.55)}50%{box-shadow:0 0 0 6px rgba(127,192,255,0)}}
+  li.step.cur .dot{animation:pulse 1.4s infinite;background:#7fc0ff;border-color:#7fc0ff}
+  .nowbadge{display:none;font-size:10px;color:#7fc0ff;border:1px solid #26324a;border-radius:999px;padding:1px 8px;text-transform:uppercase;letter-spacing:.5px;align-items:center;gap:5px}
+  li.step.cur .nowbadge{display:inline-flex}
+  /* post-test step — teardown verification that runs after the recording stops */
+  .postb{font-size:10px;color:#c9a6ff;border:1px solid #3a2a55;border-radius:999px;padding:1px 8px;text-transform:uppercase;letter-spacing:.4px;flex:0 0 auto}
+  li.step.post{border-style:dashed}
+  /* user messaging — what the app told the user, interleaved on the step timeline */
+  .grp2.msg{border-left-color:#3a2a55}
+  .grp2.msg.here{border-left-color:#a678ff}
+  .kind.msg{background:#251a3a;color:#c9a6ff}
+  .msgtext{font-size:12.5px;color:#d6c6f2;word-break:break-word}
+  .timeline .mark.msgm{background:#a678ff;opacity:.55}
+  /* verifies (authored assertions + trace-mined checks) */
+  .grp2.verify{border-left-color:#1d4030}
+  .kind.verify{background:#10281a;color:#7fe0a4}
+  .chk{font-size:12px;color:#9fd8b4;padding:1px 0;word-break:break-word}
+  .chk.here{color:#c9f3d8}
+  .scap{font-size:11.5px;color:#7fa6c2;padding:3px 0 0 28px}
+  /* console logs + timeline error markers */
+  .grp2.con{border-left-color:#3a2a10}
+  .kind.con{background:#2a2410;color:#ffd479}
+  .clog{font-size:12px;font-family:ui-monospace,monospace;display:flex;gap:8px;align-items:baseline;padding:1px 0;color:#b9b9c2;word-break:break-word}
+  .clog .lv{font-size:9px;text-transform:uppercase;letter-spacing:.4px;border-radius:4px;padding:1px 5px;flex:0 0 auto}
+  .clog.lvl-error{color:#ffb0b0}.clog.lvl-error .lv{background:#3a1414;color:#ff6a6a}
+  .clog.lvl-warning .lv{background:#2a2410;color:#ffd479}
+  .clog.lvl-log .lv,.clog.lvl-info .lv{background:#1b1b22;color:#9a9aa4}
+  .cbadge{font-size:10px;border-radius:999px;padding:1px 7px;flex:0 0 auto}
+  .cbadge.err{background:#3a1414;color:#ff6a6a}.cbadge.warn{background:#2a2410;color:#ffd479}
+  .timeline .mark{position:absolute;top:0;bottom:0;width:2px;pointer-events:none}
+  .timeline .mark.error{background:#ff5a5a;box-shadow:0 0 5px #ff5a5a}
+  .timeline .mark.warning{background:#ffb200;opacity:.6}
+  /* flag modal */
+  #modal{position:fixed;inset:0;background:rgba(5,7,12,.7);display:none;align-items:center;justify-content:center;z-index:60}
+  #modal.on{display:flex}
+  .card{background:#111117;border:1px solid #2b2b36;border-radius:14px;padding:18px 20px;width:min(460px,92vw);display:flex;flex-direction:column;gap:12px}
+  .card h3{margin:0;font-size:16px}
+  .card .tgt{font-size:12px;color:#8a8a95}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tags button{padding:5px 11px;font-size:12px;border-radius:999px;background:#17171f}
+  .tags button.on{background:#2a2410;border-color:#5a4a20;color:#ffd479}
+  textarea{width:100%;min-height:80px;background:#0d0d12;border:1px solid #23232d;border-radius:9px;color:#e7e7ea;font:inherit;padding:10px;resize:vertical}
+  .card .row{display:flex;gap:10px;justify-content:flex-end}
+  .card .row button.save{background:#12233a;border-color:#244063;color:#bfe0ff}
+</style></head><body>
+<header>
+  <a href="dashboard.html">← folders</a>
+  <h1 id="jname">…</h1>
+  <span class="cat" id="cat"></span>
+  <span class="pace" id="pace"></span>
+</header>
+<div class="wrap">
+  <section class="stage">
+    <video id="vid" playsinline></video>
+    <div class="timeline" id="tl"></div>
+    <div class="controls">
+      <button class="play" id="play">▶ Play</button>
+      <button class="rec" id="rec">● Record narration</button>
+      <button class="flag" id="flag">⚑ Flag</button>
+    </div>
+    <div id="status"></div>
+    <div class="now">
+      <div class="lbl" id="nowlbl">ready</div>
+      <h3 id="nowtitle">press Play to walk the journey, or Record to narrate it</h3>
+      <div class="cap" id="nowcap"></div>
+    </div>
+  </section>
+  <section class="steps">
+    <div class="prog"><span id="pcount">0/0</span><span class="bar"><i id="pbar"></i></span><span>done</span><a href="feedback.html" id="fblink">⚑ feedback</a></div>
+    <ol class="list" id="list"></ol>
+  </section>
+</div>
+<div id="modal"><div class="card">
+  <h3>Flag work to do</h3>
+  <div class="tgt" id="mtgt"></div>
+  <div class="tags" id="mtags"></div>
+  <textarea id="mtext" placeholder="What needs doing? e.g. step title is wrong / re-record after fix / visual baseline stale"></textarea>
+  <div class="row"><button id="mcancel">cancel</button><button class="save" id="msave">Add to backlog</button></div>
+</div></div>
+<script>
+const q=new URLSearchParams(location.search), slug=q.get('slug'), batch=q.get('batch'),
+      base=(batch&&batch!=='.')?batch+'/'+slug:slug, rate=Number(q.get('rate')||1.75);
+const TAGS=['fix','rename','re-record','question','idea','baseline'];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+const status=m=>$('status').textContent=m||'';
+let steps=[], recorder=null, chunks=[], recording=false, flags={}, flagTag='fix', flagStep=null, total=0, scrubbing=false;
+
+function collapse(calls){const out=[];for(const c of calls){const l=out[out.length-1];if(l&&l.method===c.method&&l.path===c.path&&l.status===c.status)l.count++;else out.push({...c,count:1});}return out;}
+function collapsePolls(groups){
+  const out=[];
+  for(const g of groups){
+    const sig=g.kind+'|'+g.title;
+    const prev=out[out.length-1];
+    if(prev&&prev._sig===sig){ prev.repeats++; prev.callCount+=g.calls.reduce((n,c)=>n+(c.count||1),0); prev.ats.push(g.atMs); prev.calls=prev.calls.concat(g.calls); }
+    else out.push({...g,_sig:sig,repeats:1,callCount:g.calls.reduce((n,c)=>n+(c.count||1),0),ats:[g.atMs]});
+  }
+  return out;
+}
+function groupStep(s){
+  const A=(s.actions||[]).slice().sort((a,b)=>a.atMs-b.atMs), C=(s.downstream||[]).slice().sort((a,b)=>(a.atMs||0)-(b.atMs||0)), G=[];
+  if(!A.length){if(C.length)G.push({kind:'load',title:'API calls',atMs:s.startMs,calls:collapse(C)});return collapsePolls(G);}
+  const pre=C.filter(c=>(c.atMs||0)<A[0].atMs); if(pre.length)G.push({kind:'load',title:'on load',atMs:s.startMs,calls:collapse(pre)});
+  A.forEach((a,i)=>{const n=A[i+1]?A[i+1].atMs:Infinity;G.push({kind:a.kind||'action',title:a.title,atMs:a.atMs,calls:collapse(C.filter(c=>(c.atMs||0)>=a.atMs&&(c.atMs||0)<n))});});
+  return collapsePolls(G);
+}
+function mchip(m){return `<span class="m ${esc(m||'')}">${esc(m||'')}</span>`;}
+// display de-noising (mirrors lib/brief.mjs shortenTokens — keep in sync)
+const short=s=>String(s).replace(/[A-Za-z0-9_-]{25,}/g,m=>m.slice(0,10)+'…');
+const dispTitle=s=>(s.sees&&s.sees.pageTitle&&/^Navigate to /.test(s.title))?s.sees.pageTitle:short(s.title);
+const seesTxt=s=>s.sees?[s.sees.pageTitle,s.sees.heading?`“${s.sees.heading}”`:null].filter(Boolean).join(' — '):'';
+const checkTxt=k=>k.title+(k.selector?` — ${k.selector}`:'')+(k.expected?` (expected: ${k.expected})`:'');
+
+async function init(){
+  if(!slug){status('no ?slug= in the URL');return;}
+  const g=await (await fetch(`${base}/guide.json`,{cache:'no-store'})).json();
+  steps=g.steps||[]; total=g.durationMs||(steps.length?steps[steps.length-1].endMs:0);
+  $('jname').textContent=g.title||slug; $('cat').textContent=g.category||'';
+  $('pace').textContent=`plays ${(1/rate).toFixed(2)}× (human pace)`;
+  await loadFlags();
+  renderSteps();
+  buildTimeline();
+  $('pcount').textContent=`0/${steps.length}`;
+  const v=$('vid'); v.src=`${base}/raw.webm`; v.playbackRate=1/rate;
+  v.addEventListener('timeupdate',tick);
+  v.addEventListener('ended',()=>{ if(recording) stopRec(); setPlayLabel(); finishAll(); });
+  v.addEventListener('play',setPlayLabel); v.addEventListener('pause',setPlayLabel);
+}
+async function loadFlags(){
+  flags={};
+  try{const all=await (await fetch('feedback.json',{cache:'no-store'})).json();
+    for(const n of all){ if(n.slug===slug&&n.status!=='done'){ const k=n.stepIndex==null?'J':n.stepIndex; flags[k]=(flags[k]||0)+1; } }
+  }catch{}
+  const open=Object.values(flags).reduce((a,b)=>a+b,0);
+  $('fblink').textContent=open?`⚑ feedback (${open})`:'⚑ feedback';
+}
+function isExpanded(li){return (li.classList.contains('open')||li.classList.contains('cur'))&&!li.classList.contains('closed');}
+function collapseStep(li){li.classList.remove('open');if(li.classList.contains('cur'))li.classList.add('closed');}
+function toggleStep(li){if(isExpanded(li))collapseStep(li);else{li.classList.add('open');li.classList.remove('closed');}}
+function renderSteps(){
+  $('list').innerHTML = steps.map(s=>{
+    const groups=groupStep(s), nCalls=(s.downstream||[]).length;
+    const gHtml=g=>{
+      if(g.repeats>=3){
+        const ep=g.calls[0]?(g.calls[0].method+' '+g.calls[0].path):g.title;
+        const span=g.ats.length>1?((g.ats[g.ats.length-1]-g.ats[0])/1000).toFixed(0):'0';
+        const gaps=[];for(let i=1;i<g.ats.length;i++)gaps.push(g.ats[i]-g.ats[i-1]);gaps.sort((a,b)=>a-b);
+        const iv=gaps.length?(gaps[Math.floor(gaps.length/2)]/1000).toFixed(1):'?';
+        return `<div class="grp2 poll" data-at="${g.atMs}"><div class="ghead"><span class="kind poll">⟳ polling</span><span>${esc(ep)}</span></div><div class="pollsum"><b>${g.repeats}</b> of ${nCalls} calls · every ~${iv}s over ${span}s (waiting for state to settle)</div></div>`;
+      }
+      const calls=g.calls.map(c=>`<div class="call">${mchip(c.method)}<span>${esc(c.path||'')}</span>${c.count>1?`<span class="xN">×${c.count}</span>`:''}${c.status>0?`<span class="st">${c.status}</span>`:''}${c.summary?`<span class="sum">${esc(c.summary)}</span>`:''}</div>`).join('')||'<div class="none">no API calls</div>';
+      return `<div class="grp2" data-at="${g.atMs}"><div class="ghead"><span class="kind ${esc(g.kind)}">${esc(g.kind)}</span><span title="${esc(g.title)}">${esc(short(g.title))}</span></div>${calls}</div>`;
+    };
+    // interleave action groups with the app's user-facing messages, in time order
+    const items=[...groups.map(g=>({at:g.atMs,html:gHtml(g)})),
+      ...(s.messages||[]).map(m=>({at:m.atMs,html:`<div class="grp2 msg" data-at="${m.atMs}"><div class="ghead"><span class="kind msg">💬 user sees</span><span>${esc(m.selector||'')}</span></div><div class="msgtext">${esc(m.text)}</div></div>`}))]
+      .sort((a,b)=>a.at-b.at);
+    const body=items.map(i=>i.html).join('')||'<div class="none">nothing recorded in this step</div>';
+    const dur=((s.endMs-s.startMs)/1000).toFixed(1), fc=flags[s.index]||0;
+    const con=s.console||[];
+    const cerr=con.filter(c=>c.level==='error').reduce((n,c)=>n+(c.count||1),0);
+    const cwarn=con.filter(c=>c.level==='warning').reduce((n,c)=>n+(c.count||1),0);
+    const cbadge=(cerr||cwarn)?`<span class="cbadge ${cerr?'err':'warn'}">${cerr?cerr+'⚠':''}${cerr&&cwarn?' ':''}${cwarn&&!cerr?cwarn+' warn':''}</span>`:'';
+    const conHtml=con.length?`<div class="grp2 con"><div class="ghead"><span class="kind con">console</span><span>${con.length} line(s)</span></div>${con.map(c=>`<div class="clog lvl-${esc(c.level)}"><span class="lv">${esc(c.level)}</span><span>${esc(String(c.text).slice(0,220))}</span>${c.count>1?`<span class="xN">×${c.count}</span>`:''}</div>`).join('')}</div>`:'';
+    // verifies — authored assertions first (fingerprinted), then trace-mined checks
+    // (identical poll re-checks arrive folded with a count from the miner)
+    const vlist=[...(s.assertions||[]).map(t=>({t,n:1})),...(s.checks||[]).map(k=>({t:checkTxt(k),at:k.atMs,n:k.count||1}))];
+    const vTotal=vlist.reduce((a,v)=>a+v.n,0);
+    const vHtml=vlist.length?`<div class="grp2 verify"><div class="ghead"><span class="kind verify">✓ verifies</span><span>${vlist.length} check(s)${vTotal>vlist.length?` · ${vTotal} incl. poll re-checks`:''}</span></div>${vlist.map(v=>`<div class="chk"${v.at!=null?` data-at="${v.at}"`:''}>✓ ${esc(short(v.t))}${v.n>1?` <span class="xN">×${v.n}</span>`:''}</div>`).join('')}</div>`:'';
+    const capRaw=seesTxt(s), cap=capRaw&&capRaw!==dispTitle(s)?capRaw:'';   // only when it adds info
+    return `<li class="step${s.post?' post':''}" id="st-${s.index}" data-i="${s.index}">
+      <div class="shead"><span class="dot"></span><span class="sidx">${s.index}</span><span class="stitle" title="${esc(s.title)}">${esc(dispTitle(s))}</span>${s.post?'<span class="postb">after video</span>':''}<span class="nowbadge">● now</span>${cbadge}
+        <button class="sjump" data-jump="${s.index}" title="play from this step">▶</button>
+        <button class="sflag" data-flag="${s.index}" title="flag this step">⚑<span class="fc">${fc||''}</span></button>
+        <span class="scount">${groups.length}·${nCalls}</span><span class="stime">${dur}s</span>
+        <button class="sclose" data-close="${s.index}" title="close this step">✕</button></div>
+      ${cap?`<div class="scap">${esc(cap)}</div>`:''}
+      <div class="sbody">${body}${vHtml}${conHtml}</div></li>`;
+  }).join('') || '<li class="none">no steps in this guide</li>';
+  for(const li of $('list').querySelectorAll('.step')){
+    const head=li.querySelector('.shead');
+    // OWNER'S RULE (2026-07-19): clicking a step row NEVER moves the playhead —
+    // it opens/closes the step for review. Restarting a step is the explicit ▶
+    // button (sjump) only. Do not re-add seek-on-row-click.
+    // The CURRENT step auto-expands to follow playback, so collapsing it needs an
+    // explicit 'closed' state that overrides the auto-expand (cleared once the
+    // playhead moves on, so the teleprompter resumes following).
+    head.addEventListener('click',e=>{ if(e.target.closest('.sflag')||e.target.closest('.sjump')||e.target.closest('.sclose'))return;
+      toggleStep(li); });
+  }
+  $('list').querySelectorAll('[data-flag]').forEach(b=>b.onclick=e=>{e.stopPropagation();openFlag(Number(b.dataset.flag));});
+  $('list').querySelectorAll('[data-close]').forEach(b=>b.onclick=e=>{e.stopPropagation();const li=$('st-'+b.dataset.close);if(li)collapseStep(li);});
+  $('list').querySelectorAll('[data-jump]').forEach(b=>b.onclick=async e=>{e.stopPropagation();
+    if(recording){ status('recording — step jump disabled so the take stays aligned'); return; }
+    const st=steps[b.dataset.jump-1]; if(st){ $('vid').currentTime=(st.startMs+5)/1000; try{await $('vid').play();}catch{} } });
+}
+function marks(){ return steps.flatMap(s=>[
+  ...(s.console||[]).filter(c=>(c.level==='error'||c.level==='warning')&&c.atMs<=total).map(c=>`<div class="mark ${c.level}" style="left:${(c.atMs/total*100).toFixed(3)}%"></div>`),
+  ...(s.messages||[]).filter(m=>m.atMs<=total).map(m=>`<div class="mark msgm" style="left:${(m.atMs/total*100).toFixed(3)}%" title="${esc(m.text.slice(0,80))}"></div>`),
+]).join(''); }
+function buildTimeline(){
+  const vsteps=steps.filter(s=>!s.post);   // the video timeline shows video time — post-test lives in the list
+  if(!total)total=vsteps.length?vsteps[vsteps.length-1].endMs:1;
+  $('tl').innerHTML = vsteps.map(s=>{
+    const l=(s.startMs/total*100).toFixed(3), w=(Math.max(0,(s.endMs-s.startMs))/total*100).toFixed(3);
+    return `<div class="seg" id="tl-${s.index}" data-i="${s.index}" style="left:${l}%;width:${w}%" title="${esc(s.index+'. '+dispTitle(s))}"><span>${s.index}</span></div>`;
+  }).join('')+marks()+'<div class="playhead" id="ph"></div>';
+  const seekAt=cx=>{const r=$('tl').getBoundingClientRect();const frac=Math.min(1,Math.max(0,(cx-r.left)/r.width));const v=$('vid');const dur=v.duration&&isFinite(v.duration)?v.duration:total/1000||1;v.currentTime=frac*dur;updateTimeline(v.currentTime*1000,curIndex(v.currentTime*1000));};
+  $('tl').onmousedown=e=>{scrubbing=true;seekAt(e.clientX);e.preventDefault();};
+  window.addEventListener('mousemove',e=>{if(scrubbing)seekAt(e.clientX);});
+  window.addEventListener('mouseup',()=>{scrubbing=false;});
+  $('tl').ontouchstart=e=>{scrubbing=true;seekAt(e.touches[0].clientX);};
+  $('tl').ontouchmove=e=>{if(scrubbing){seekAt(e.touches[0].clientX);e.preventDefault();}};
+  $('tl').ontouchend=()=>{scrubbing=false;};
+}
+function updateTimeline(t,ci){
+  if(!total)return; const ph=$('ph'); if(ph)ph.style.left=Math.min(100,Math.max(0,t/total*100))+'%';
+  steps.forEach((s,i)=>{const sg=$('tl-'+s.index); if(sg){sg.classList.toggle('done',t>=s.endMs);sg.classList.toggle('cur',i===ci&&t>=s.startMs);}});
+}
+function curIndex(t){for(let i=0;i<steps.length;i++)if(t>=steps[i].startMs&&t<steps[i].endMs)return i;return t<(steps[0]?.startMs||0)?-1:steps.length-1;}
+function tick(){
+  const t=$('vid').currentTime*1000, ci=curIndex(t); let done=0;
+  steps.forEach((s,i)=>{const li=$('st-'+s.index); if(!li)return;
+    const isDone=t>=s.endMs, isCur=i===ci&&t>=s.startMs;
+    li.classList.toggle('done',isDone); li.classList.toggle('cur',isCur); if(isDone)done++;
+    if(!isCur)li.classList.remove('closed');   // a manual collapse applies to this visit only
+    if(isCur){const gs=[...li.querySelectorAll('.grp2')];let act=-1;gs.forEach((g,gi)=>{if(t>=Number(g.dataset.at))act=gi;});gs.forEach((g,gi)=>g.classList.toggle('here',gi===act));
+      li.querySelectorAll('.chk[data-at]').forEach(c=>c.classList.toggle('here',t>=Number(c.dataset.at)));}
+  });
+  updateTimeline(t,ci);
+  $('pcount').textContent=`${done}/${steps.length}`; $('pbar').style.width=(steps.length?done/steps.length*100:0)+'%';
+  const cur=steps[ci];
+  if(cur){$('nowlbl').textContent=`step ${cur.index}/${steps.length}`;$('nowtitle').textContent=dispTitle(cur);
+    const nxt=steps[ci+1], vN=(cur.assertions||[]).length+(cur.checks||[]).length, see=seesTxt(cur);
+    $('nowcap').textContent=[see?`on screen: ${see}`:null,
+      `${groupStep(cur).length} action group(s) · ${(cur.downstream||[]).length} API calls${vN?` · ✓${vN}`:''}`,
+      nxt?`next: ${dispTitle(nxt)}`:'last step'].filter(Boolean).join('  ·  ');
+    const li=$('st-'+cur.index); if(li) li.scrollIntoView({block:'nearest',behavior:'smooth'});}
+}
+function setPlayLabel(){const v=$('vid');$('play').textContent=v.paused?'▶ Play':'❚❚ Pause';}
+// The trace clock outruns the video: teardown work (final DB/Stripe checks, close
+// context) lands AFTER the recording stops, so the last step's endMs can sit past
+// the video's end and `t >= endMs` never fires. When the video ends, the journey
+// is over — mark everything done explicitly. (Seeking back re-derives states.)
+function finishAll(){
+  steps.forEach(s=>{
+    const li=$('st-'+s.index); if(li){li.classList.add('done');li.classList.remove('cur','closed');}
+    const sg=$('tl-'+s.index); if(sg){sg.classList.add('done');sg.classList.remove('cur');}
+  });
+  const ph=$('ph'); if(ph)ph.style.left='100%';
+  $('pcount').textContent=`${steps.length}/${steps.length}`; $('pbar').style.width='100%';
+  $('nowlbl').textContent='done';
+  $('nowtitle').textContent='journey complete';
+  $('nowcap').textContent='replay a step with its ▶, or Record narration for the next take';
+}
+$('play').addEventListener('click',async()=>{const v=$('vid'); if(v.paused){try{await v.play();}catch{}} else v.pause();});
+
+// ── flag / feedback ──
+function openFlag(stepIndex){
+  flagStep=stepIndex==null?null:stepIndex; flagTag='fix';
+  const s=flagStep!=null?steps[flagStep-1]:null;
+  $('mtgt').textContent=s?`step ${s.index}: ${s.title}`:`whole journey: ${$('jname').textContent}`;
+  $('mtags').innerHTML=TAGS.map(t=>`<button data-t="${t}" class="${t==='fix'?'on':''}">${t}</button>`).join('');
+  $('mtags').querySelectorAll('button').forEach(b=>b.onclick=()=>{flagTag=b.dataset.t;$('mtags').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));});
+  $('mtext').value=''; $('modal').classList.add('on'); $('mtext').focus();
+}
+function closeFlag(){$('modal').classList.remove('on');}
+async function saveFlag(){
+  const s=flagStep!=null?steps[flagStep-1]:null;
+  const body={batch:batch||'.',slug,stepIndex:flagStep,step:s?s.title:null,tag:flagTag,text:$('mtext').value.trim()};
+  try{await fetch('/api/note',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+    closeFlag(); await loadFlags(); renderSteps(); status('⚑ flagged — see the feedback board'); }
+  catch(e){status('could not save flag: '+e.message);}
+}
+$('flag').addEventListener('click',()=>openFlag(curIndex($('vid').currentTime*1000)>=0?steps[curIndex($('vid').currentTime*1000)].index:null));
+$('msave').addEventListener('click',saveFlag);
+$('mcancel').addEventListener('click',closeFlag);
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeFlag();});
+
+async function startRec(){
+  let stream; try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch{status('mic permission denied');return;}
+  chunks=[]; recorder=new MediaRecorder(stream); recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);}; recorder.onstop=save;
+  const v=$('vid'); v.currentTime=0; try{await v.play();}catch{}
+  recorder.start(); recording=true; const b=$('rec'); b.textContent='■ Stop'; b.classList.add('on');
+  status('● recording — narrate as you watch. Steps tick green as you go.');
+}
+function stopRec(){recording=false; if(recorder&&recorder.state!=='inactive')recorder.stop(); $('vid').pause(); const b=$('rec'); b.textContent='● Re-record narration'; b.classList.remove('on');}
+async function save(){
+  const blob=new Blob(chunks,{type:'audio/webm'}); status('saving…');
+  try{const r=await fetch(`${base}/voice.webm`,{method:'POST',body:blob}); if(!r.ok)throw 0;
+    status(`✓ saved voice.webm (${(blob.size/1024).toFixed(0)} KB). Splice:  journey-studio splice ${slug}${batch&&batch!=='.'?' --dir guides/'+batch:''}`);
+  }catch{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='voice.webm';a.click();
+    status('server save unavailable — downloaded voice.webm; drop it into the guide folder.');}
+}
+$('rec').addEventListener('click',()=>recording?stopRec():startRec());
+init();
+</script></body></html>

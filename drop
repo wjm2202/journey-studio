@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# drop — the Journey Studio drop zone.
+# Drop Playwright report folders into ./inbox, then run this to ingest + open the dashboard.
+#
+#   ./drop                                 ingest ./inbox, then serve the dashboard
+#   ./drop --no-serve                      just (re)ingest — no browser
+#   JOURNEY_OPENAPI=<spec.json> ./drop     join API calls to that OpenAPI spec for meaning
+#   JOURNEY_INBOX=<dir> ./drop             use a different drop folder
+#
+# Safe: reads the folders you dropped, writes only under ./guides. No git, no deletes, no DB.
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+INBOX="${JOURNEY_INBOX:-$HERE/inbox}"
+mkdir -p "$INBOX"
+args=(ingest --inbox "$INBOX")
+if [ -n "${JOURNEY_OPENAPI:-}" ]; then args+=(--openapi "$JOURNEY_OPENAPI"); fi
+args+=("$@")
+count=$(find "$INBOX" -mindepth 1 -maxdepth 1 -type d ! -name '.*' ! -name '_processed' 2>/dev/null | wc -l | tr -d ' ')
+echo "▒ drop zone: $INBOX  ($count folder(s))"
+if [ "$count" = "0" ]; then
+  echo "  (empty — drop Playwright report folders into $INBOX, then run ./drop again)"
+fi
+exec node "$HERE/bin/journey-studio.mjs" "${args[@]}"

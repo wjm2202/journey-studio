@@ -1,0 +1,8 @@
+# runtime data — NEVER commit: ingested reports carry product videos and traces
+guides/
+inbox/
+_to_delete/
+
+node_modules/
+*.log
+.DS_Store
