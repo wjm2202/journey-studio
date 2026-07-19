@@ -6,19 +6,44 @@ Zero runtime dependencies — Node built-ins plus the `ffmpeg`/`ffprobe`/`unzip`
 already on your machine. MIT licensed.
 
 ## Requires
-- Node ≥ 18
-- `ffprobe`/`ffmpeg` (optional for `build`; required later for splicing)
+- Node ≥ 18 — nothing to `npm install`, there are no dependencies
+- `ffmpeg`/`ffprobe` on your PATH (only needed when you splice the final video)
 
-## Use
+## Quick start
+
+**1. Make your Playwright run produce ingestible results** — videos plus a JSON
+report. Keep tracing on: the trace is what gives guides their steps, API calls,
+user-facing messages and checks.
+
+```ts
+// playwright.config.ts
+export default defineConfig({
+  use: { video: 'on', trace: 'on' },
+  reporter: [['list'], ['json', { outputFile: 'test-results/results.json' }]],
+});
+```
+
+**2. Start the dashboard:**
+
 ```bash
-# 1. produce a Playwright json report in your test project, e.g.
-#    reporter: [['json', { outputFile: 'results.json' }]]
+git clone https://github.com/wjm2202/journey-studio && cd journey-studio
+node bin/journey-studio.mjs serve      # → http://localhost:8777/dashboard.html
+```
 
-# 2. point Journey Studio at it
-node bin/journey-studio.mjs path/to/results.json      # build + open the dashboard
-# or step by step:
-node bin/journey-studio.mjs build path/to/results.json --out ./guides
-node bin/journey-studio.mjs serve --dir ./guides --port 8777
+**3. Drag your report folder onto the page.** Drop the whole folder that holds
+`results.json` and its videos/traces (usually your `test-results/` directory)
+anywhere on the dashboard. It uploads, ingests, and every spec appears as a
+card — pass/fail/skip across the whole run, filterable, with every passing test
+ready as a guide. Click **work on this →** to open the narration studio: watch
+the journey at human pace with a step-by-step teleprompter, press **Record**,
+and narrate in one take.
+
+Prefer the terminal? These do the same as the drag-and-drop:
+
+```bash
+node bin/journey-studio.mjs ingest --from path/to/test-results  # ingest one report folder
+./drop                                # ingest every folder dropped into ./inbox, then serve
+node bin/journey-studio.mjs path/to/results.json                # classic: point at a report
 ```
 
 ## What it does
