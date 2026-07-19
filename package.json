@@ -37,7 +37,7 @@
   "homepage": "https://parametric-memory.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/parametric-memory/journey-studio.git"
+    "url": "git+https://github.com/wjm2202/journey-studio.git"
   },
   "engines": {
     "node": ">=18"
