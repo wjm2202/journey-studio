@@ -32,7 +32,9 @@ test('dashboard drop path: PUT files + POST /api/ingest builds a batch', async (
   const port = 8800 + (process.pid % 90);
   const srv = spawn('node', [path.join(ROOT, 'bin/journey-studio.mjs'), 'serve', '--dir', guides, '--port', String(port)], { cwd: ROOT, stdio: 'ignore', env: { ...process.env, BROWSER: 'true' } });
   try {
-    const base = `http://localhost:${port}`;
+    // 127.0.0.1, NOT localhost: the server binds loopback IPv4 only, and Node 18's
+    // fetch resolves localhost to ::1 without falling back to IPv4 (Node 20+ does).
+    const base = `http://127.0.0.1:${port}`;
     assert.ok(await waitUp(base), 'server came up');
     const videoAbs = '/Users/x/proj/test-results/demo/video.webm';
     let r = await fetch(`${base}/api/upload?path=run1/results.json`, { method: 'PUT', body: JSON.stringify(report(videoAbs)) });

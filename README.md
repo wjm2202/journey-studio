@@ -12,16 +12,26 @@ already on your machine. MIT licensed.
 ## Quick start
 
 **1. Make your Playwright run produce ingestible results** — videos plus a JSON
-report. Keep tracing on: the trace is what gives guides their steps, API calls,
-user-facing messages and checks.
+report. The whole setup is three settings in your test project's config:
 
 ```ts
 // playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
 export default defineConfig({
   use: { video: 'on', trace: 'on' },
   reporter: [['list'], ['json', { outputFile: 'test-results/results.json' }]],
 });
 ```
+
+The counterintuitive part is `'on'`. Playwright's defaults keep videos and traces
+only when a test *fails* — but guides are built from tests that *pass*, so the
+defaults throw away exactly the artifacts you need. The trace does the heavy
+lifting: every `expect()`, selector, API call and user-facing message the test
+triggered is mined into the step timeline, so a raw recording becomes a
+chaptered walkthrough. And with `results.json` written inside `test-results/`,
+that one folder holds report + videos + traces together — it's the folder you
+drop in step 3.
 
 **2. Start the dashboard:**
 
